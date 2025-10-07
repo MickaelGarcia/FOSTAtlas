@@ -1,0 +1,182 @@
+
+[tool.ruff]
+# Ruff configuration.
+# Rule descriptions: https://beta.ruff.rs/docs/rules/
+# Ruff repository: https://github.com/astral-sh/ruff
+line-length = 90
+# Assume Python 3.13
+target-version = "py313"
+# Excluded directories.
+exclude = [
+    ".git",
+    ".ruff_cache",
+    "scripts", # One-shot scripts.
+    "tests", # Tests scripts does not need to follow conventions.
+]
+
+[tool.ruff.lint]
+# Enabled rules.
+select = [
+    "A001", "A002",
+    "ARG",
+    "B",
+    "BLE",
+    "C4",
+    "C90",
+    "COM",
+    "D100", "D101", "D102", "D103", "D104", "D200", "D201", "D202", "D204",
+    "D205", "D206", "D207", "D208", "D209", "D210", "D211", "D212", "D214",
+    "D215", "D300", "D301", "D400", "D401", "D402", "D403", "D404", "D405",
+    "D410", "D411", "D412", "D414", "D415", "D416", "D417", "D418", "D419",
+    "DTZ",
+    "E",
+    "EXE003", "EXE004", "EXE005",
+    "F",
+    "FA",
+    "FURB",
+    "I", # isort
+    "I002", # missing-required-import
+    "ICN",
+    "INP",
+    "INT",
+    "ISC",
+    "N",
+    "PERF",
+    "PIE",
+    "PLE0101", "PLR0206", "PLR1711", "PLR1722",
+    "PYI",
+    "Q001", "Q002",
+    "RET",
+    "RSE",
+    "RUF",
+    "SIM",
+    "SLF",
+    "SLOT",
+    "T10",
+    "TCH",
+    "TD",
+    "TID",
+    "UP",
+    "W",
+    "YTT",
+    #"PL",  # Pylint is one of the most verbose, but also the most interesting.
+    "PLC0206",
+    "PLE",
+    "PLR6201",
+    "PLW0108", "PLW0133",
+]
+ignore = [
+    "N813", # camelcase-imported-as-lowercase (OpenMayaUI imported omui).
+    "SIM108", # if-else-block-instead-of-if-exp makes code harder to read.
+    "RET504", # unnecessary-assign makes output variable harder to understand.
+    "RET505", # superfluous-else-return if/else return is perfectly readable.
+    "SIM114", # if-with-same-arms explicit branching make code easier to read.
+    "TD003", # missing-todo-link we don't use TODO tracker.
+    "FURB140", # reimplemented-starmap useless in 3.12+.
+    "RUF023", # unsorted-dunder-slots (unsorted __slots__ is OK).
+    "PLR0904", # too-many-public-methods.
+    "PLR0911", # too-many-return-statements
+    "PLR0912", # too-many-branches
+    "PLR0913", # too-many-arguments (needed on big scripts).
+    "PLR0914", # too-many-locals (needed on big scripts).
+    "PLR0915", # too-many-statements (mostly too many assignments).
+    "PLR0916", # too-many-boolean-expressions
+    "COM812", # missing-trailing-comma (good rule, but incompatible with formatter).
+]
+# Autofix (when `--fix`) is forbided.
+fixable = ["I", "F401"]  # "ALL" by default, but we don't want auto fix.
+unfixable = []
+
+
+[tool.ruff.lint.extend-per-file-ignores]
+"python/*/__init__.py" = ["F401"]  # No unused-import in __init__.py.
+
+[tool.ruff.lint.pep8-naming]
+extend-ignore-names = [
+    # N813 Camelcase `OpenMaya` imported as lowercase `om`.
+    "OpenMaya",
+    "OpenMayaUI",
+    "QtCore",
+    "QtGui",
+    "QtWidgets",
+    # Qt inherited methods.
+    "rowCount", "columnCount",
+    "insertRow", "insertRows",
+    "moveRow", "moveRows",
+    "removeRow", "removeRows",
+    "insertColumn", "insertColumns",
+    "moveColumn", "moveColumns",
+    "removeColumn", "removeColumns",
+    "headerData", "setData", "setModel", "eventFilter",
+    "closeEvent", "paintEvent", "resizeEvent",
+    "keyPressEvent", "dropEvent",
+    "mousePressEvent", "mouseMoveEvent",
+    "drawForeground", "drawBackground",
+]
+
+[tool.ruff.lint.flake8-self]
+extend-ignore-names = [
+    "_backend", # We use this often for peewee model instances.
+    "_schema", # Member to accesse to peewee model definition.
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.flake8-import-conventions.aliases]  # Rule ICN001 for detection.
+"Qt.QtCore" = "qtc"
+"Qt.QtGui" = "qtg"
+"Qt.QtWidgets" = "qtw"
+"Qt.QtCompat" = "qtcomp"
+"Qt.QtOpenGL" = "qtgl"
+"maya.cmds" = "mc"
+"maya.OpenMaya" = "om"
+"maya.OpenMayaUI" = "omui"
+"maya.api.OpenMaya" = "om2"
+"tk_const" = "c_dt"
+
+[tool.ruff.lint.isort]
+combine-as-imports = true
+force-single-line = true
+force-sort-within-sections = false
+required-imports = ["from __future__ import annotations"]
+known-first-party = ["tk_*"]
+lines-after-imports = 2
+lines-between-types = 1
+
+[tool.ruff.lint.mccabe]
+max-complexity = 30  # 10 by default is too low for orchestration functions.
+
+[tool.mypy]
+# Mypy configuration
+# Configuration options: https://mypy.readthedocs.io/en/stable/config_file.html
+# Mypy repo: https://github.com/python/mypy
+mypy_path = "python"
+explicit_package_bases = true
+# strict = true
+exclude = [
+    "scripts/.*"
+]
+check_untyped_defs = true
+
+[[tool.mypy.overrides]]
+module = [
+    "maya.*",
+    "mutils",
+    "mgear.*",
+    "fileseq",
+    "pyblish.*",
+    "unreal",
+    "substance_painter.*",
+    "_substance_painter.*",
+    "ngSkinTools2",
+    "mayaUsd.*",
+    "pxr",
+    "nuke",
+    "timecode",
+    "ArtefactLib.*",
+    "qtpy.*",
+    "pymel.*",
+    "ufe.*",
+]
+ignore_missing_imports = true
