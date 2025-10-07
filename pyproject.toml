@@ -133,14 +133,14 @@ convention = "google"
 "maya.OpenMaya" = "om"
 "maya.OpenMayaUI" = "omui"
 "maya.api.OpenMaya" = "om2"
-"tk_const" = "c_dt"
+"atlas_const" = "c_dt"
 
 [tool.ruff.lint.isort]
 combine-as-imports = true
 force-single-line = true
 force-sort-within-sections = false
 required-imports = ["from __future__ import annotations"]
-known-first-party = ["tk_*"]
+known-first-party = ["atlas_*"]
 lines-after-imports = 2
 lines-between-types = 1
 
