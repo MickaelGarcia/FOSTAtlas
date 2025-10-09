@@ -2,22 +2,23 @@
 
 from __future__ import annotations
 
-import dataclasses
-import json
+from datetime import datetime
+from typing import Any
 
-from sqlalchemy import Boolean
-from sqlalchemy import Column
-from sqlalchemy import ForeignKey
-from sqlalchemy import Integer
 from sqlalchemy import JSON
-from sqlalchemy import String
+from sqlalchemy import DateTime
+from sqlalchemy import ForeignKey
+from sqlalchemy import func
+from sqlalchemy.ext.mutable import MutableDict
+from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import Mapped
-from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm import MappedAsDataclass
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
 
 
-Base = declarative_base()
+class Base(MappedAsDataclass, DeclarativeBase):
+    """Subclasses will be converted to dataclasses."""
 
 
 class Project(Base):
@@ -25,21 +26,24 @@ class Project(Base):
 
     __tablename__ = "project"
 
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True, index=True)
+    id: Mapped[int] = mapped_column(
+        primary_key=True,
+        autoincrement=True,
+        index=True,
+        init=False,
+    )
     code: Mapped[str] = mapped_column(unique=True, nullable=False)
     name: Mapped[str] = mapped_column(unique=False, nullable=False)
+
+    asset: Mapped[Asset] = relationship(back_populates="project", init=False)
+
+    meta: Mapped[dict[str, Any]] = mapped_column(
+        MutableDict.as_mutable(JSON()),
+        default=dict,
+        nullable=False,
+    )
+
     active: Mapped[bool] = mapped_column(default=True)
-    meta: Mapped[JSON]
-
-    asset: Mapped[list[Asset]] = relationship(back_populates="project")
-
-    def set_metadata(self, meta: dict):
-        """Set project metadata."""
-        json.dumps(meta, indent=4)
-
-    def get_metadata(self) -> dict:
-        """Return metadata as dict"""
-        return json.loads(self._meta)
 
 
 class AssetType(Base):
@@ -47,12 +51,18 @@ class AssetType(Base):
 
     __tablename__ = "asset_type"
 
-    id: int = Column(Integer, primary_key=True, autoincrement=True, index=True)
-    code: str = Column(String, unique=True, nullable=False)
-    name: str = Column(String, unique=True, nullable=False)
-    active: bool = Column(Boolean, default=True)
+    id: Mapped[int] = mapped_column(
+        primary_key=True,
+        autoincrement=True,
+        index=True,
+        init=False,
+    )
+    code: Mapped[str] = mapped_column(unique=True, nullable=False)
+    name: Mapped[str] = mapped_column(unique=True, nullable=False)
 
-    asset: Asset = relationship("Asset", back_populates="asset_type")
+    asset: Mapped[Asset] = relationship(back_populates="asset_type", init=False)
+
+    active: Mapped[bool] = mapped_column(default=True)
 
 
 class Asset(Base):
@@ -60,16 +70,19 @@ class Asset(Base):
 
     __tablename__ = "asset"
 
-    id: int = Column(Integer, primary_key=True, autoincrement=True, index=True)
-    code: str = Column(String, nullable=False)
-    active: bool = Column(Boolean, default=True)
+    id: Mapped[int] = mapped_column(
+        primary_key=True, autoincrement=True, index=True, init=False
+    )
+    code: Mapped[str] = mapped_column(nullable=False)
 
-    asset_type_id: int = Column(Integer, ForeignKey("asset_type.id"))
-    project_id: int = Column(Integer, ForeignKey("project.id"))
+    asset_type_id: Mapped[int] = mapped_column(ForeignKey("asset_type.id"), init=False)
+    project_id: Mapped[int] = mapped_column(ForeignKey("project.id"), init=False)
 
-    project: Project = relationship("Project", back_populates="asset")
-    asset_type: AssetType = relationship("AssetType", back_populates="asset")
-    task: Task = relationship("Task", back_populates="asset")
+    project: Mapped[Project] = relationship(back_populates="asset")
+    asset_type: Mapped[AssetType] = relationship(back_populates="asset")
+    task: Mapped[Task] = relationship(back_populates="asset", init=False)
+
+    active: Mapped[bool] = mapped_column(default=True)
 
     @property
     def name(self):
@@ -82,12 +95,13 @@ class TaskType(Base):
 
     __tablename__ = "task_type"
 
-    id: int = Column(Integer, primary_key=True, autoincrement=True, index=True)
-    code: str = Column(String, unique=True, nullable=False)
-    name: str = Column(String, unique=True, nullable=False)
-    active: bool = Column(Boolean, default=True)
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True, index=True)
+    code: Mapped[str] = mapped_column(unique=True, nullable=False)
+    name: Mapped[str] = mapped_column(unique=True, nullable=False)
 
-    task: Task = relationship("Task", back_populates="task_type")
+    task: Mapped[Task] = relationship(back_populates="task_type")
+
+    active: Mapped[bool] = mapped_column(default=True)
 
 
 class Task(Base):
@@ -95,32 +109,35 @@ class Task(Base):
 
     __tablename__ = "task"
 
-    id: int = Column(Integer, primary_key=True, autoincrement=True, index=True)
-    asset_id: int = Column(Integer, ForeignKey("asset.id"))
-    task_type_id: int = Column(Integer, ForeignKey("task_type.id"))
-    active: bool = Column(Boolean, default=True)
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True, index=True)
+    asset_id: Mapped[int] = mapped_column(ForeignKey("asset.id"))
+    task_type_id: Mapped[int] = mapped_column(ForeignKey("task_type.id"))
 
-    asset: Asset = relationship("Asset", back_populates="task")
-    task_type: TaskType = relationship("TaskType", back_populates="task")
-    publish: Publish = relationship("Publish", back_populates="task")
+    asset: Mapped[Asset] = relationship(back_populates="task")
+    task_type: Mapped[TaskType] = relationship(back_populates="task")
+    publish: Mapped[Publish] = relationship(back_populates="task")
+
+    active: Mapped[bool] = mapped_column(default=True)
 
     @property
     def name(self):
         """Wrap name from task_type code."""
         return self.task_type.name
 
+
 class PublishType(Base):
     """Publish type table."""
 
     __tablename__ = "publish_type"
 
-    id: int = Column(Integer, primary_key=True, autoincrement=True, index=True)
-    code: str = Column(String, nullable=False, unique=True)
-    description: str = Column(String, nullable=False)
-    extension: str = Column(String, nullable=False)
-    active: bool = Column(Boolean, default=True)
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True, index=True)
+    code: Mapped[str] = mapped_column(nullable=False, unique=True)
+    description: Mapped[str] = mapped_column(nullable=False)
+    extension: Mapped[str] = mapped_column(nullable=False)
 
-    publish: Publish = relationship("Publish", back_populates="publish_type")
+    publish: Mapped[Publish] = relationship(back_populates="publish_type")
+
+    active: Mapped[bool] = mapped_column(default=True)
 
 
 class Publish(Base):
@@ -128,33 +145,22 @@ class Publish(Base):
 
     __tablename__ = "publish"
 
-    id: int = Column(Integer, primary_key=True, autoincrement=True, index=True)
-    code: str = Column(String, nullable=False)
-    path: str = Column(String, nullable=False, unique=True)
-    version: int = Column(Integer, nullable=False)
-    release: str = Column(String, nullable=False)
-    size: int = Column(Integer)
-    active: bool = Column(Boolean, default=True)
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True, index=True)
+    code: Mapped[str] = mapped_column(nullable=False)
+    path: Mapped[str] = mapped_column(nullable=False, unique=True)
+    version: Mapped[int] = mapped_column(nullable=False)
+    release: Mapped[str] = mapped_column(nullable=False)
+    size: Mapped[int]
 
-    publish_type_id: int = Column(Integer, ForeignKey("publish_type.id"))
-    task_id: int = Column(Integer, ForeignKey("task.id"))
-    user_id: int = Column(Integer, ForeignKey("user.id"))
+    publish_type_id: Mapped[int] = mapped_column(ForeignKey("publish_type.id"))
+    task_id: Mapped[int] = mapped_column(ForeignKey("task.id"))
 
-    publish_type: PublishType = relationship("PublishType", back_populates="publish")
-    task: Task = relationship("Task", back_populates="publish")
-    user: User = relationship("User", backref="publish")
+    publish_type: Mapped[PublishType] = relationship(back_populates="publish")
+    task: Mapped[Task] = relationship(back_populates="publish")
 
-
-class User(Base):
-    """User table."""
-
-    __tablename__ = "user"
-
-    id: int = Column(Integer, primary_key=True, autoincrement=True, index=True)
-    code: str = Column(String, nullable=False)
-    last_name: str = Column(String)
-    first_name: str = Column(String)
-    os_name: str = Column(String, nullable=False)
-    mail: str = Column(String, nullable=False, unique=True)
-
-    publish: Publish = relationship("User", back_populates="publish")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        insert_default=func.now(),
+        default=None,
+    )
+    active: Mapped[bool] = mapped_column(default=True)
