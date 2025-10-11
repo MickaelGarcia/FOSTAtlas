@@ -5,18 +5,15 @@ from __future__ import annotations
 from typing import override
 
 from Qt import QtCore as qtc
-from Qt import QtWidgets as qtw
 
 from atlas_db.context import DbCommitContext
-from atlas_db.context import DbQueryContext
 from atlas_db.models import Base
-from atlas_db.models import Project
 
 
 ActiveRole = qtc.Qt.UserRole + 1
 
 
-class EntityTableModel(qtc.QAbstractTableModel):
+class EntityTypeTableModel(qtc.QAbstractTableModel):
     """Entity table model object."""
 
     def __init__(self, entity_type: type[Base], *args, **kwargs):
@@ -60,10 +57,13 @@ class EntityTableModel(qtc.QAbstractTableModel):
             return False
 
         entity = self._entities[index.row()]
-
         if role == qtc.Qt.CheckStateRole:
-            with DbCommitContext():
-                entity.active = value
+            with DbCommitContext() as db:
+                loaded_entity = db.query(self._entity_type).where(
+                    self._entity_type.id == entity.id
+                ).first()
+                loaded_entity.active = bool(value)
+            entity.active = bool(value)
             return True
 
         return False
@@ -109,45 +109,3 @@ class EntityTableModel(qtc.QAbstractTableModel):
             return None
 
         return entity
-
-
-class EntityTableWidget(qtw.QWidget):
-    """Base entity widget."""
-
-    EntityAdded = qtc.Signal(Base)
-
-    def __init__(self, entity_type: type[Base], *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._entity_type = entity_type
-        self.setWindowTitle(f"{self._entity_type.__name__}")
-
-        self._view = qtw.QTableView(self)
-        self._model = EntityTableModel(entity_type)
-
-        self._view.setModel(self._model)
-
-        lay_main = qtw.QVBoxLayout(self)
-        lay_main.setContentsMargins(0, 0, 0, 0)
-        lay_main.addWidget(self._view)
-
-    def set_entities(self, entities: list[Base]):
-        """Set entities to model."""
-        self._model.set_entities(entities)
-
-    def add_entity(self, entity: Base):
-        """Add entity to model."""
-        self._model.add_entity(entity)
-        self.EntityAdded.emit(entity)
-
-
-if __name__ == "__main__":
-    import sys
-
-    qt_app = qtw.QApplication(sys.argv)
-    widget = EntityTableWidget(Project)
-    with DbQueryContext() as db:
-        project_query = db.query(Project)
-        projects = list(project_query)
-    widget.set_entities(projects)
-    widget.show()
-    qt_app.exec_()

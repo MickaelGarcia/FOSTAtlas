@@ -95,11 +95,13 @@ class TaskType(Base):
 
     __tablename__ = "task_type"
 
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True, index=True)
+    id: Mapped[int] = mapped_column(
+        primary_key=True, autoincrement=True, index=True, init=False
+    )
     code: Mapped[str] = mapped_column(unique=True, nullable=False)
     name: Mapped[str] = mapped_column(unique=True, nullable=False)
 
-    task: Mapped[Task] = relationship(back_populates="task_type")
+    task: Mapped[Task] = relationship(back_populates="task_type", init=False)
 
     active: Mapped[bool] = mapped_column(default=True)
 
@@ -109,13 +111,15 @@ class Task(Base):
 
     __tablename__ = "task"
 
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True, index=True)
+    id: Mapped[int] = mapped_column(
+        primary_key=True, autoincrement=True, index=True, init=False
+    )
     asset_id: Mapped[int] = mapped_column(ForeignKey("asset.id"))
     task_type_id: Mapped[int] = mapped_column(ForeignKey("task_type.id"))
 
     asset: Mapped[Asset] = relationship(back_populates="task")
     task_type: Mapped[TaskType] = relationship(back_populates="task")
-    publish: Mapped[Publish] = relationship(back_populates="task")
+    publish: Mapped[Publish] = relationship(back_populates="task", init=False)
 
     active: Mapped[bool] = mapped_column(default=True)
 
@@ -130,12 +134,14 @@ class PublishType(Base):
 
     __tablename__ = "publish_type"
 
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True, index=True)
+    id: Mapped[int] = mapped_column(
+        primary_key=True, autoincrement=True, index=True, init=False
+    )
     code: Mapped[str] = mapped_column(nullable=False, unique=True)
     description: Mapped[str] = mapped_column(nullable=False)
     extension: Mapped[str] = mapped_column(nullable=False)
 
-    publish: Mapped[Publish] = relationship(back_populates="publish_type")
+    publish: Mapped[Publish] = relationship(back_populates="publish_type", init=False)
 
     active: Mapped[bool] = mapped_column(default=True)
 
@@ -145,7 +151,9 @@ class Publish(Base):
 
     __tablename__ = "publish"
 
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True, index=True)
+    id: Mapped[int] = mapped_column(
+        primary_key=True, autoincrement=True, index=True, init=False
+    )
     code: Mapped[str] = mapped_column(nullable=False)
     path: Mapped[str] = mapped_column(nullable=False, unique=True)
     version: Mapped[int] = mapped_column(nullable=False)

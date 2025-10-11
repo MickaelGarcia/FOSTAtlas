@@ -25,10 +25,10 @@ class MissingDbPublishTypeError(Exception):
 class MissingDbPublishError(Exception):
     """Raised when publish do not exist in database."""
 
-class DbProjectAlreadyExistsError(Exception):
+class DbProjectAlreadyExistError(Exception):
     """Raised when trying to create project that already exist."""
 
-class DbAssetTypeAlreadyExistsError(Exception):
+class DbAssetTypeAlreadyExistError(Exception):
     """Raised when trying to create asset type that already exist."""
 
 class DbAssetAlreadyExistError(Exception):

@@ -28,6 +28,7 @@ class DbCommitContext(Db):
 
     def __enter__(self):
         self._session = self.Session()
+        self._session.expire_on_commit = False
         return self._session
 
     def __exit__(self, *args, **kwargs):
