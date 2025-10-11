@@ -20,6 +20,10 @@ from sqlalchemy.orm import relationship
 class Base(MappedAsDataclass, DeclarativeBase):
     """Subclasses will be converted to dataclasses."""
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+
 
 class Project(Base):
     """Project table."""

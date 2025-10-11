@@ -14,7 +14,6 @@ from sqlalchemy import inspect
 from atlas_db.context import DbCommitContext
 from atlas_db.context import DbQueryContext
 from atlas_db.models import Base
-from atlas_db.models import PublishType
 from atlas_db_ui.models.entity_type import EntityTypeTableModel
 from atlas_db_ui.widgets.asset_type import AssetTypeTableWidget
 from atlas_db_ui.widgets.publish_type import PublishTypeTableWidget
@@ -41,9 +40,9 @@ class EntityAddDialog(qtw.QDialog):
             col_type = col.type.python_type
             if col_type is not str:
                 continue
-            widget = qtw.QLineEdit(self)
-            self._widget_by_names[name] = widget
-            lay_options.addRow(f"{name.capitalize()} :", widget)
+            option_widget = qtw.QLineEdit(self)
+            self._widget_by_names[name] = option_widget
+            lay_options.addRow(f"{name.capitalize()} :", option_widget)
 
         btn_ok = qtw.QPushButton("Ok")
         btn_cancel = qtw.QPushButton("Cancel")
