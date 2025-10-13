@@ -14,8 +14,10 @@ from sqlalchemy import inspect
 from atlas_db.context import DbCommitContext
 from atlas_db.context import DbQueryContext
 from atlas_db.models import Base
+from atlas_db.models import Project
 from atlas_db_ui.models.entity_type import EntityTypeTableModel
 from atlas_db_ui.widgets.asset_type import AssetTypeTableWidget
+from atlas_db_ui.widgets.projects import ProjectEditableWidget
 from atlas_db_ui.widgets.publish_type import PublishTypeTableWidget
 from atlas_db_ui.widgets.task_type import TaskTypeTableWidget
 
@@ -124,16 +126,24 @@ class EntityTypesWidget(qtw.QWidget):
         super().__init__(*args, **kwargs)
 
         self._tab = qtw.QTabWidget(self)
+        self._project = ProjectEditableWidget()
         self._asset_type = AssetTypeTableWidget()
         self._task_type = TaskTypeTableWidget()
         self._publish_type = PublishTypeTableWidget()
 
+        self._tab.addTab(self._project, "Project")
         self._tab.addTab(self._asset_type, "Asset Type")
         self._tab.addTab(self._task_type, "Task Type")
         self._tab.addTab(self._publish_type, "Publish Type")
 
         lay_main = qtw.QVBoxLayout(self)
         lay_main.addWidget(self._tab)
+
+        with DbQueryContext() as db:
+            project_query = db.query(Project)
+            projects = list(project_query)
+
+        self._project.set_projects(projects)
 
 
 

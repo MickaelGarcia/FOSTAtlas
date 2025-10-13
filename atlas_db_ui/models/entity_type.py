@@ -109,3 +109,55 @@ class EntityTypeTableModel(qtc.QAbstractTableModel):
             return None
 
         return entity
+
+
+class EntityTypeListModel(qtc.QAbstractListModel):
+    """Entity table model object."""
+
+    def __init__(self, entity_type: type[Base], *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._entity_type = entity_type
+        self._entities: list[Base] = []
+
+    @override
+    def rowCount(self, parent=...):
+        return len(self._entities)
+
+
+    @override
+    def data(self, index, role=...):
+        if not index.isValid():
+            return None
+        entity = self._entities[index.row()]
+
+        if role == qtc.Qt.DisplayRole:
+            return getattr(entity, "name", None)
+        if role == qtc.Qt.UserRole:
+            return entity
+
+        return None
+
+    def set_entities(self, entities: list[Base]):
+        """Set entities in model."""
+        self.beginResetModel()
+        self._entities = entities
+        self.endResetModel()
+
+    def add_entity(self, entity: Base):
+        """Add entity in model."""
+        self.beginInsertRows(
+            qtc.QModelIndex(),
+            len(self._entities),
+            len(self._entities) + 1,
+        )
+        self._entities.append(entity)
+        self.endInsertRows()
+
+    def get_entity(self, code: str) -> Base | None:
+        """Get entity by code."""
+        try:
+            entity = next(entity for entity in self._entities if entity.code == code)
+        except StopIteration:
+            return None
+
+        return entity

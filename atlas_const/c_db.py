@@ -39,3 +39,11 @@ publish_code_grp_re = re.compile(rf"^{publish_code_grp}$")
 file_desc_str = r"[a-z]+"
 file_desc_grp = rf"(?P<file_desc>{file_desc_str})"
 file_desc_grp_re = rf"^{file_desc_grp}$"
+
+
+MINIMAL_PROJECT_ENV = {
+    "versions": {},
+    "env": {
+        "ATLAS_PROJECT_ROOT_PATH": "",
+    },
+}
