@@ -8,6 +8,7 @@ from Qt import QtCore as qtc
 from Qt import QtWidgets as qtw
 
 from atlas_db import __version__
+from atlas_db_ui.widgets.entity_type import EntityTypesWidget
 
 
 class AtlasHelp(qtw.QDialog):
@@ -49,15 +50,28 @@ class AtlasMainWindow(qtw.QMainWindow):
 
         self.menu = qtw.QMenuBar(self)
         act_help = qtw.QAction("Help", self)
-        act_help.triggered.connect(self._help_menu)
+        act_help.triggered.connect(self._help_menu_triggered)
+
+        act_tool = qtw.QMenu("Tool", self)
+
+        act_entity_type = qtw.QAction("Manage Entity Types", self)
+        act_entity_type.triggered.connect(self._manage_entity_type_triggered)
+        act_tool.addAction(act_entity_type)
+
+        self.menu.addMenu(act_tool)
+
 
         self.setMenuBar(self.menu)
 
         self.menu.addAction(act_help)
 
-    def _help_menu(self):
+    def _help_menu_triggered(self):
         dlg = AtlasHelp()
         dlg.exec()
+
+    def _manage_entity_type_triggered(self):
+        dlg = EntityTypesWidget(self)
+        dlg.show()
 
 
 if __name__ == "__main__":
