@@ -17,7 +17,7 @@ from atlas_db.models import Base
 from atlas_db.models import Project
 from atlas_db_ui.models.entity_type import EntityTypeTableModel
 from atlas_db_ui.widgets.asset_type import AssetTypeTableWidget
-from atlas_db_ui.widgets.projects import ProjectEditableWidget
+from atlas_db_ui.widgets.projects_create import ProjectEditableWidget
 from atlas_db_ui.widgets.publish_type import PublishTypeTableWidget
 from atlas_db_ui.widgets.task_type import TaskTypeTableWidget
 
@@ -124,6 +124,8 @@ class EntityTypesWidget(qtw.QWidget):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.setWindowTitle("Entity Type Manager")
+        self.setWindowFlag(qtc.Qt.Window)
 
         self._tab = qtw.QTabWidget(self)
         self._project = ProjectEditableWidget()
