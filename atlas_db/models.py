@@ -16,13 +16,15 @@ from sqlalchemy.orm import MappedAsDataclass
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
 
+from atlas_db.errors import MissingDbAssetError
+from atlas_db.errors import MissingDbTaskError
+
 
 class Base(MappedAsDataclass, DeclarativeBase):
     """Subclasses will be converted to dataclasses."""
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
 
 
 class Project(Base):
@@ -48,6 +50,38 @@ class Project(Base):
     )
 
     active: Mapped[bool] = mapped_column(default=True)
+
+    def assets(self) -> list[Asset]:
+        """Get asset list related to project."""
+        from atlas_db.context import DbQueryContext
+
+        with DbQueryContext() as db:
+            db.expire_on_commit = False
+            assets = db.query(Asset).join(Project).filter(Asset.project == self)
+
+        return list(assets)
+
+    def get_asset(self, code: str, asset_type: AssetType) -> Asset:
+        """Get asset by his code."""
+        from atlas_db.context import DbQueryContext
+
+        with DbQueryContext() as db:
+            db.expire_on_commit = False
+            asset = (
+                db.query(Asset)
+                .join(Project)
+                .join(AssetType)
+                .filter(
+                    Asset.project == self,
+                    Asset.code == code,
+                    Asset.asset_type == asset_type,
+                )
+                .first()
+            )
+        if not asset:
+            raise MissingDbAssetError
+
+        return asset
 
 
 class AssetType(Base):
@@ -93,6 +127,36 @@ class Asset(Base):
         """Return asset name."""
         return self.code
 
+    def tasks(self) -> list[Task]:
+        """Get tasks of asset."""
+        from atlas_db.context import DbQueryContext
+
+        with DbQueryContext() as db:
+            db.expire_on_commit = False
+            tasks = db.query(Task).join(Asset).filter(Task.asset == self)
+
+        return list(tasks)
+
+    def get_task(self, task_type: TaskType) -> Task:
+        """Get specific task from his task_type code or task_type."""
+        from atlas_db.context import DbQueryContext
+
+        with DbQueryContext() as db:
+            db.expire_on_commit = False
+            task = (
+                db.query(Task)
+                .join(Asset)
+                .join(TaskType)
+                .filter(Task.asset == self, Task.task_type == task_type)
+                .first()
+            )
+
+        if not task:
+            raise MissingDbTaskError
+
+        return task
+
+
 
 class TaskType(Base):
     """Task type table."""
@@ -118,8 +182,8 @@ class Task(Base):
     id: Mapped[int] = mapped_column(
         primary_key=True, autoincrement=True, index=True, init=False
     )
-    asset_id: Mapped[int] = mapped_column(ForeignKey("asset.id"))
-    task_type_id: Mapped[int] = mapped_column(ForeignKey("task_type.id"))
+    asset_id: Mapped[int] = mapped_column(ForeignKey("asset.id"), init=False)
+    task_type_id: Mapped[int] = mapped_column(ForeignKey("task_type.id"), init=False)
 
     asset: Mapped[Asset] = relationship(back_populates="task")
     task_type: Mapped[TaskType] = relationship(back_populates="task")
