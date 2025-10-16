@@ -2,12 +2,34 @@
 
 from __future__ import annotations
 
+from collections import defaultdict
 from typing import Any
 
 from Qt import QtCore as qtc
+from sqlalchemy.orm import Query
 from typing_extensions import override
 
+from atlas_db.context import DbCommitContext
+from atlas_db.context import DbQueryContext
+from atlas_db.models import Asset
+from atlas_db.models import AssetType
 from atlas_db.models import Base
+from atlas_db.models import Project
+from atlas_db.models import Task
+from atlas_db.models import TaskType
+
+EntityRole = qtc.Qt.UserRole + 1
+
+COLUMN_BY_ENTITY_TYPE = {
+    Asset: (
+        ("Project", "Asset", "Type", "Active"),
+        (Project.name, Asset.code, AssetType.name, Asset.active)
+    ),
+    Task: (
+        ("Asset", "Name", "Active"),
+        (Asset.code, TaskType.name, Task.active)
+    )
+}
 
 
 class EntityItem:
@@ -19,12 +41,17 @@ class EntityItem:
         self._entity = entity
         self._parent = parent
         self._children: list[EntityItem] = []
-        self._columns = columns
+        self.columns = columns
 
     @property
     def parent(self) -> EntityItem | None:
         """Return entity parent."""
         return self._parent
+
+    @parent.setter
+    def parent(self, value: EntityItem):
+        """Set parent."""
+        self._parent = value
 
     @property
     def child_count(self) -> int:
@@ -34,7 +61,7 @@ class EntityItem:
     @property
     def column_count(self) -> int:
         """Return number of column."""
-        return len(self._columns)
+        return len(self.columns)
 
     def add_child(self, item: EntityItem):
         """Add child to item."""
@@ -53,8 +80,12 @@ class EntityItem:
     def data(self, column: int, role: qtc.Qt.ItemDataRole) -> Any:
         """Return data from given column index."""
         if role == qtc.Qt.DisplayRole:
-            return self._columns[column] if 0 <= column < self.column_count else None
-        elif role == qtc.Qt.UserRole:
+            return self.columns[column] if 0 <= column < self.column_count else None
+
+        if role == qtc.Qt.UserRole and isinstance(self.columns[column], bool):
+            return qtc.Qt.Checked if self._entity.active else qtc.Qt.Unchecked
+
+        if role == EntityRole:
             return self._entity
         return None
 
@@ -68,12 +99,61 @@ class EntityItem:
 class EntityTreeModel(qtc.QAbstractItemModel):
     """Entity tree model to show entities."""
 
-    def __init__(self, entity_type: type[Base], headers: list[str], *args, **kwargs):
+    def __init__(self, entity_type: type[Base], *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._entity_type = entity_type
-        self._root_item = EntityItem(None, headers)
+        self._headers, query_args = COLUMN_BY_ENTITY_TYPE[entity_type]
+        self._root_item = EntityItem(None, self._headers, None)
+        self.entities: list[EntityItem] = []
 
-        self._items = []
+        with DbQueryContext() as db:
+            db.expire_on_commit = False
+            query = (
+                db.query(self._entity_type, *query_args)
+                .select_from(Task)
+                .join(Asset)
+                .join(TaskType)
+
+            )
+
+        self._set_items(query)
+
+    def _set_items(self, entities: list[Query]):
+        """Set item in model."""
+        self.beginResetModel()
+
+        for entity in entities:
+            name = list(entity)
+            item = EntityItem(name[0], name[1:], self._root_item)
+            self.entities.append(item)
+            self._root_item.add_child(item)
+        self.endResetModel()
+
+    def group_by(self, property_name: str):
+        """Group entity by given property_name."""
+        if property_name not in self._headers:
+            return
+        index = self._headers.index(property_name)
+
+        self.beginResetModel()
+        entity_by_group = defaultdict(list)
+        self._root_item = EntityItem(None, self._headers, None)
+        for item in self.entities:
+            entity_by_group[item.columns[index]].append(item)
+
+        for name, entities in entity_by_group.items():
+            header_len = len(self._headers)
+            group = EntityItem(
+                None,
+                [name, *["" for _ in range(header_len)]],
+                self._root_item
+            )
+            self._root_item.add_child(group)
+            for entity in entities:
+                entity.parent = group
+                group.add_child(entity)
+
+        self.endResetModel()
 
     @override
     def index(self, row: int, column: int, parent: qtc.QModelIndex | None = None):
@@ -113,25 +193,58 @@ class EntityTreeModel(qtc.QAbstractItemModel):
         return parent_item.child_count
 
     @override
-    def columnCount(self, parent = ...):
+    def columnCount(self, parent=...):
         return self._root_item.column_count
 
     @override
-    def headerData(self, section, orientation, role = ...):
+    def headerData(self, section, orientation, role=...):
         if orientation == qtc.Qt.Horizontal and role == qtc.Qt.DisplayRole:
             return self._root_item.data(section, qtc.Qt.DisplayRole)
         return None
 
     @override
-    def data(self, index, role = ...):
+    def flags(self, index):
+        if not index.isValid():
+            return qtc.Qt.NoItemFlags
+
+        if self._root_item.columns[index.column()] == "Active":
+            return super().flags(index) | qtc.Qt.ItemIsUserCheckable
+        return super().flags(index)
+
+    @override
+    def data(self, index, role=...):
         if not index.isValid():
             return None
 
         item: EntityItem = index.internalPointer()
+        column_name = self._root_item.columns[index.column()]
 
-        if role == qtc.Qt.DisplayRole:
+        if role == qtc.Qt.DisplayRole and column_name != "Active":
             return item.data(index.column(), qtc.Qt.DisplayRole)
+        elif role == qtc.Qt.CheckStateRole and column_name == "Active":
+            return item.data(index.column(), qtc.Qt.UserRole)
+
         elif role == qtc.Qt.UserRole:
             return item.data(index.column(), qtc.Qt.UserRole)
 
         return None
+
+    @override
+    def setData(self, index, value, role=...):
+        if not index.isValid():
+            return False
+
+        entity: EntityItem = index.internalPointer()
+        if role == qtc.Qt.CheckStateRole:
+            entity.columns[index.column()] = value >= 1
+            with DbCommitContext() as db:
+                db_entity = entity.data(0, EntityRole)
+                query = (
+                    db.query(self._entity_type)
+                    .where(self._entity_type.id == db_entity.id)
+                    .first()
+                )
+                query.active = value >= 1
+
+            return True
+        return False
