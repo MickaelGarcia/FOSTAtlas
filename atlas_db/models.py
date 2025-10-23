@@ -118,7 +118,12 @@ class Asset(Base):
 
     project: Mapped[Project] = relationship(back_populates="asset")
     asset_type: Mapped[AssetType] = relationship(back_populates="asset")
-    task: Mapped[Task] = relationship(back_populates="asset", init=False)
+    tasks: Mapped[list[Task]] = relationship(
+        back_populates="asset",
+        init=False,
+        uselist=True,
+        cascade="all, delete-orphan",
+    )
 
     active: Mapped[bool] = mapped_column(default=True)
 
@@ -126,16 +131,6 @@ class Asset(Base):
     def name(self):
         """Return asset name."""
         return self.code
-
-    def tasks(self) -> list[Task]:
-        """Get tasks of asset."""
-        from atlas_db.context import DbQueryContext
-
-        with DbQueryContext() as db:
-            db.expire_on_commit = False
-            tasks = db.query(Task).join(Asset).filter(Task.asset == self)
-
-        return list(tasks)
 
     def get_task(self, task_type: TaskType) -> Task:
         """Get specific task from his task_type code or task_type."""
@@ -187,7 +182,12 @@ class Task(Base):
 
     asset: Mapped[Asset] = relationship(back_populates="task")
     task_type: Mapped[TaskType] = relationship(back_populates="task")
-    publish: Mapped[Publish] = relationship(back_populates="task", init=False)
+    publish: Mapped[list[Publish]] = relationship(
+        back_populates="task",
+        init=False,
+        uselist=True,
+        cascade="all, delete-orphan",
+    )
 
     active: Mapped[bool] = mapped_column(default=True)
 
