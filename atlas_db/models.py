@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime  # noqa: TC003
 from typing import Any
 
 from sqlalchemy import JSON
@@ -66,7 +66,12 @@ class Project(Base):
     code: Mapped[str] = mapped_column(unique=True, nullable=False)
     name: Mapped[str] = mapped_column(unique=False, nullable=False)
 
-    asset: Mapped[Asset] = relationship(back_populates="project", init=False)
+    asset: Mapped[list[Asset]] = relationship(
+        back_populates="project",
+        init=False,
+        uselist=True,
+        cascade="all, delete-orphan",
+    )
 
     meta: Mapped[dict[str, Any]] = mapped_column(
         MutableDict.as_mutable(JSON()),
@@ -123,7 +128,12 @@ class AssetType(Base):
     code: Mapped[str] = mapped_column(unique=True, nullable=False)
     name: Mapped[str] = mapped_column(unique=True, nullable=False)
 
-    asset: Mapped[Asset] = relationship(back_populates="asset_type", init=False)
+    asset: Mapped[list[Asset]] = relationship(
+        back_populates="asset_type",
+        init=False,
+        uselist=True,
+        cascade="all, delete-orphan",
+    )
 
     active: Mapped[bool] = mapped_column(default=True)
 
@@ -205,7 +215,7 @@ class Task(Base):
     asset_id: Mapped[int] = mapped_column(ForeignKey("asset.id"), init=False)
     task_type_id: Mapped[int] = mapped_column(ForeignKey("task_type.id"), init=False)
 
-    asset: Mapped[Asset] = relationship(back_populates="task")
+    asset: Mapped[Asset] = relationship(back_populates="tasks")
     task_type: Mapped[TaskType] = relationship(back_populates="task")
     publish: Mapped[list[Publish]] = relationship(
         back_populates="task",
