@@ -26,6 +26,31 @@ class Base(MappedAsDataclass, DeclarativeBase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+    @property
+    def id(self):
+        """Index requirement of model."""
+        raise NotImplementedError
+
+    @property
+    def code(self):
+        """Code requirement of model."""
+        raise NotImplementedError
+
+    @property
+    def name(self):
+        """Name requirement of model."""
+        raise NotImplementedError
+
+    @property
+    def active(self):
+        """Active requirement of model."""
+        raise NotImplementedError
+
+    @active.setter
+    def active(self, value: bool):
+        """Active Setter."""
+        raise NotImplementedError
+
 
 class Project(Base):
     """Project table."""
