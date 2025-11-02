@@ -2,19 +2,24 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
 from typing import override
 
 from Qt import QtCore as qtc
 
 from atlas_db.context import DbCommitContext
-from atlas_db.models import Base
 
 
-ActiveRole = qtc.Qt.UserRole + 1
+if TYPE_CHECKING:
+    from atlas_db.models import Base
 
 
 class EntityTypeTableModel(qtc.QAbstractTableModel):
     """Entity table model object."""
+
+    ActiveRole = qtc.Qt.UserRole + 1
+
+    SetActive = qtc.Signal(bool)
 
     def __init__(self, entity_type: type[Base], *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -43,11 +48,16 @@ class EntityTypeTableModel(qtc.QAbstractTableModel):
         if role == qtc.Qt.UserRole:
             return entity
 
-        if role == qtc.Qt.TextAlignmentRole:
+        if role == qtc.Qt.TextAlignmentRole and not isinstance(
+            getattr(entity, column_name), str
+        ):
             return int(qtc.Qt.AlignCenter)
 
         if role == qtc.Qt.CheckStateRole and column_name == "active":
             return qtc.Qt.Checked if entity.active else qtc.Qt.Unchecked
+
+        if role == self.ActiveRole:
+            return entity.active
 
         return None
 
@@ -57,13 +67,16 @@ class EntityTypeTableModel(qtc.QAbstractTableModel):
             return False
 
         entity = self._entities[index.row()]
-        if role == qtc.Qt.CheckStateRole:
+        if role == qtc.Qt.CheckStateRole or role == self.ActiveRole:
             with DbCommitContext() as db:
-                loaded_entity = db.query(self._entity_type).where(
-                    self._entity_type.id == entity.id
-                ).first()
+                loaded_entity = (
+                    db.query(self._entity_type)
+                    .where(self._entity_type.id == entity.id)
+                    .first()
+                )
                 loaded_entity.active = bool(value)
             entity.active = bool(value)
+            self.SetActive.emit(bool(value))
             return True
 
         return False
@@ -122,7 +135,6 @@ class EntityTypeListModel(qtc.QAbstractListModel):
     @override
     def rowCount(self, parent=...):
         return len(self._entities)
-
 
     @override
     def data(self, index, role=...):
