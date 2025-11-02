@@ -275,3 +275,35 @@ class Publish(Base):
         default=None,
     )
     active: Mapped[bool] = mapped_column(default=True)
+
+
+def update_model_value(
+    model_name: str,
+    row_id: int,
+    column_name: str,
+    new_value,
+) -> None:
+    """Update given model_name column_name with new given new_value.
+
+    Args:
+        session: Session SQLAlchemy active.
+        model_name: Table class name (ex: "Asset").
+        row_id: Column id
+        column_name: Column name to edit.
+        new_value: New value to set.
+    """
+    from atlas_db.context import DbCommitContext
+
+    model_cls = globals().get(model_name)
+    if model_cls is None:
+        raise ValueError(f"No table named: {model_name}")
+
+    with DbCommitContext() as db:
+        obj = db.query(model_cls).filter_by(id=row_id).first()
+        if obj is None:
+            raise ValueError(f"No row with id ={row_id} in model {model_name}")
+
+        if not hasattr(obj, column_name):
+            raise ValueError(f"Unknown column: {column_name} in model {model_name}")
+
+        setattr(obj, column_name, new_value)
