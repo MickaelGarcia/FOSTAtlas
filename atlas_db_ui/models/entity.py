@@ -4,11 +4,8 @@ from typing import Any
 from typing import override
 
 from Qt import QtCore as qtc
-from sqlalchemy import select
-from sqlalchemy import text
+from Qt import QtGui as qtg
 
-from atlas_db.context import DbCommitContext
-from atlas_db.context import DbQueryContext
 from atlas_db.models import update_model_value
 
 
@@ -54,6 +51,18 @@ class EntityTypeTableModel(qtc.QAbstractTableModel):
         ):
             return qtc.Qt.Checked if value else qtc.Qt.Unchecked
 
+        if role == self.ActiveRole:
+            # Get first active column
+            key = None
+            for key in self._column_names:
+                if "active" in key:
+                    break
+            return entity.get(key)
+
+        if role == qtc.Qt.BackgroundRole:
+            is_active = self.data(index, self.ActiveRole)
+            return None if is_active else qtg.QColor("Grey")
+
         if role == qtc.Qt.UserRole:
             return value
 
@@ -76,22 +85,16 @@ class EntityTypeTableModel(qtc.QAbstractTableModel):
             if entity_id is None:
                 return None
 
-            update_model_value(
-                table_name,
-                entity_id,
-                column_name,
-                not active_value
-            )
+            update_model_value(table_name, entity_id, column_name, not active_value)
 
             for i, entity in enumerate(self._entities):
-
                 filter_entity_id = entity[f"{table_name}.id"]
                 if filter_entity_id == entity_id:
                     entity[current_col_value] = not active_value
                     self.dataChanged.emit(
                         self.index(i, current_col_index),
-                        self.index(self.rowCount() -1, current_col_index),
-                        [int(qtc.Qt.CheckStateRole)]
+                        self.index(self.rowCount() - 1, current_col_index),
+                        [int(qtc.Qt.CheckStateRole)],
                     )
             return True
 
